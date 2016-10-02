@@ -1,4 +1,4 @@
 *.o
 *.dat
 *.RData
-*.RHistory
+*.Rhistory
