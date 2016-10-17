@@ -25,6 +25,8 @@ void eulerocromer(struct set,double(*)(struct set),double(*)(struct set),char *)
 void midpoint(struct set,double(*)(struct set),double(*)(struct set),char *);
 void leapfrog(struct set,double(*)(struct set),double(*)(struct set),char *);
 double lettura(char *);
+void periodo(int,int,FILE *,double *);
+
 
 int main(){
 	struct set variabili;
@@ -32,7 +34,6 @@ int main(){
 	char titolo[80];
 	double (*f_accelerazione)(struct set);
 	double (*f_energia)(struct set);
-	// dichiarare due puntatori a funzioni ed assagnarli a accelerazione_pendolo(o accelerazione_oscillatore) e a energia_oscillaotre (o energia_pendlo)
 	do{
 	printf("Digitare\n1 problema oscillatore armonico\n2 problema pendolo...\n");
 	scanf("%d",&scelta);
@@ -111,8 +112,8 @@ int main(){
 			scanf("%d",&scelta);
 		} while (scelta!=1 && scelta!=2 && scelta!=3 && scelta!=4);
 		if(scelta==1){
-			 sprintf(titolo, "pendolo_eulero(x0=%.3lf_v0=%.3lf_gamma=%.3lf).dat", variabili.x, variabili.v, variabili.k);
-			 eulero(variabili,f_accelerazione,f_energia,titolo);
+			sprintf(titolo, "pendolo_eulero(x0=%.3lf_v0=%.3lf_gamma=%.3lf).dat", variabili.x, variabili.v, variabili.k);
+			eulero(variabili,f_accelerazione,f_energia,titolo);			
 		}
 		if(scelta==2){
 			sprintf(titolo, "pendolo_eulero-cromer(x0=%.3lf_v0=%.3lf_gamma=%.3lf).dat", variabili.x, variabili.v, variabili.k);
@@ -153,21 +154,23 @@ void eulero(struct set parametri,double (*accelerazione)(struct set),double (*en
   char titolo2[100];
   FILE *p,*p2;
   t=malloc(1*sizeof(double));
-  strcpy(titolo2,"PERIODO");
+  strcpy(titolo2,"PERIODO-");
   p=fopen(titolo, "w");
   strcat(titolo2,titolo);
   p2=fopen(titolo2,"w");
+  //strcpy(titolo2,"Delta E vs Delta t");
+  //strcat(titolo2,titolo);
+  //penergia=fopen(titolo2,"w");
   E0=energia(parametri);
-  while (i*passo<parametri.tmax){
-    fprintf(p, "%.10lf\t %.10lf\t %.10lf\t %.10lf\t\n", i*passo, parametri.x, parametri.v, (energia(parametri)-E0)/E0);
+  while (i*passo<=parametri.tmax){
+	fprintf(p, "%.10lf\t %.10lf\t %.10lf\t %.10lf\t\n", i*passo, parametri.x, parametri.v, (energia(parametri)-E0)/E0);
     prima=parametri.x; //la posizione prima del passo
     temp=accelerazione(parametri);
     parametri.x=parametri.x+parametri.v*passo;
     parametri.v=parametri.v+temp*passo;
-    if(prima*parametri.x<0){
+	if(prima*parametri.x<0){
 		t=(double *)realloc(t,(j+1)*sizeof(double));
-		*(t+j-1)=(i*passo+(i-1)*passo)/2;
-		if(j>2) fprintf(p2,"%.10lf\n",*(t+j-1)-(*(t+j-3)));
+		periodo(i,j,p2,t);
 		j++;
 	}
     i++;
@@ -176,49 +179,90 @@ void eulero(struct set parametri,double (*accelerazione)(struct set),double (*en
   fclose(p2);
 }
 void eulerocromer(struct set parametri,double (*accelerazione)(struct set),double (*energia)(struct set),char *titolo){
-    int i=0;
-  double E0;
-  FILE *p;
+  int i=0,j=1;
+  double E0,prima;
+  double *t;
+  char titolo2[100];
+  FILE *p,*p2;
+  t=malloc(1*sizeof(double));
+  strcpy(titolo2,"PERIODO-");
   p=fopen(titolo, "w");
+  strcat(titolo2,titolo);
+  p2=fopen(titolo2,"w");
   E0=energia(parametri);
   while (i*passo<parametri.tmax) {
     fprintf(p, "%.10lf\t %.10lf\t %.10lf\t %.10lf\t\n", i*passo, parametri.x, parametri.v, (energia(parametri)-E0)/E0);
+    prima=parametri.x;
     parametri.v=parametri.v+accelerazione(parametri)*passo;
     parametri.x=parametri.x+parametri.v*passo;
+    if(prima*parametri.x<0){
+		t=(double *)realloc(t,(j+1)*sizeof(double));
+		periodo(i,j,p2,t);
+		j++;
+	}
     i++;
   }
   fclose(p);
+  fclose(p2);
 }
 void leapfrog(struct set parametri,double (*accelerazione)(struct set),double (*energia)(struct set),char *titolo){
-  int i=0;
-  double E0,temp,temp2;
-  FILE *p;
+  int i=0,j=1;
+  double E0,temp,temp2,prima,*t;
+  char titolo2[80];
+  FILE *p,*p2;
+  t=malloc(1*sizeof(double));
+  strcpy(titolo2,"PERIODO-");
   p=fopen(titolo, "w");
+  strcat(titolo2,titolo);
+  p2=fopen(titolo2,"w");
   E0=energia(parametri);
   temp=parametri.v+accelerazione(parametri)*passo/2;
   while (i*passo<parametri.tmax) {
     fprintf(p, "%.10lf\t %.10lf\t %.10lf\t %.10lf\t\n", i*passo,parametri.x, parametri.v, (energia(parametri)-E0)/E0);
+    prima=parametri.x;
     temp2=temp+accelerazione(parametri)*passo;
     parametri.x=parametri.x+temp2*passo;
     parametri.v=(temp2+temp)/2;
     temp=temp2;
+    if(prima*parametri.x<0) {
+		t=(double *)realloc(t,(j+1)*sizeof(double));
+		periodo(i,j,p2,t);
+		j++;
+	}
     i++;
   }
   fclose(p);
+  fclose(p2);
 }
 void midpoint(struct set parametri,double (*accelerazione)(struct set),double (*energia)(struct set),char *titolo){
-  int i=0;
-  double E0, temp;
-  FILE *p;
+  int i=0,j=1;
+  double E0, temp,prima,*t;
+  char titolo2[80];
+  t=malloc(1*sizeof(double));
+  strcpy(titolo2,"PERIODO-");
+  FILE *p,*p2;
   p=fopen(titolo, "w");
+  strcat(titolo2,titolo);
+  p2=fopen(titolo2,"w");
   E0=energia(parametri);
   temp=parametri.v;
   while (i*passo<parametri.tmax) {
     fprintf(p, "%.10lf\t %.10lf\t %.10lf\t %.10lf\t\n", i*passo, parametri.x, parametri.v, (energia(parametri)-E0)/E0);
+    prima=parametri.x;
     parametri.v=parametri.v+accelerazione(parametri)*passo;
     parametri.x=parametri.x+(parametri.v+temp)/2*passo;
     temp=parametri.v;
+    if(prima*parametri.x<0) {
+		t=(double *)realloc(t,(j+1)*sizeof(double));
+		periodo(i,j,p2,t);
+		j++;
+	}
     i++;
   }
   fclose(p);
+  fclose(p2);
+}
+void periodo(int i,int j,FILE *p2,double *t){
+	*(t+j-1)=(i*passo+(i-1)*passo)/2;
+	if(j>2) fprintf(p2,"%.10lf\n",*(t+j-1)-(*(t+j-3)));
 }
